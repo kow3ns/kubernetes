@@ -49,6 +49,8 @@ func HistoryViewerFor(kind schema.GroupKind, c clientset.Interface) (HistoryView
 	switch kind {
 	case extensions.Kind("Deployment"), apps.Kind("Deployment"):
 		return &DeploymentHistoryViewer{c}, nil
+	case apps.Kind("StatefulSet"):
+		return &StatefulSetHistoryViewer{c}, nil
 	}
 	return nil, fmt.Errorf("no history viewer has been implemented for %q", kind)
 }
@@ -126,6 +128,40 @@ func (h *DeploymentHistoryViewer) ViewHistory(namespace, name string, revision i
 				changeCause = "<none>"
 			}
 			fmt.Fprintf(out, "%d\t%s\n", r, changeCause)
+		}
+		return nil
+	})
+}
+
+type StatefulSetHistoryViewer struct {
+	c clientset.Interface
+}
+
+// ViewHistory returns a list of the revision history of a statefulset
+// TODO: this should be a describer
+// TODO: needs to implement detailed revision view
+func (h *StatefulSetHistoryViewer) ViewHistory(namespace, name string, revision int64) (string, error) {
+	sts, err := h.c.Apps().StatefulSets(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve statefulset %s", err)
+	}
+	revisions, err := h.c.Apps().ControllerRevisions(namespace).List(metav1.ListOptions{LabelSelector: sts.Spec.Selector.String()})
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve statefulset history %s", err)
+	}
+	if len(revisions.Items) <= 0 {
+		return "No rollout history found.", nil
+	}
+	revisionNumbers := make([]int64, len(revisions.Items))
+	for i := range revisions.Items {
+		revisionNumbers[i] = revisions.Items[i].Revision
+	}
+	sliceutil.SortInts64(revisionNumbers)
+
+	return tabbedString(func(out io.Writer) error {
+		fmt.Fprintf(out, "REVISION\n")
+		for _, r := range revisionNumbers {
+			fmt.Fprintf(out, "%d\n", r)
 		}
 		return nil
 	})

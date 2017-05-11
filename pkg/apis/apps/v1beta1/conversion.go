@@ -109,6 +109,13 @@ func Convert_v1beta1_StatefulSetSpec_To_apps_StatefulSetSpec(in *StatefulSetSpec
 	} else {
 		out.VolumeClaimTemplates = nil
 	}
+	if err := Convert_v1beta1_StatefulSetUpdateStrategy_To_apps_StatefulSetUpdateStrategy(&in.UpdateStrategy, &out.UpdateStrategy, s); err != nil {
+		return err
+	}
+	if in.RevisionHistoryLimit != nil {
+		out.RevisionHistoryLimit = new(int32)
+		*out.RevisionHistoryLimit = *in.RevisionHistoryLimit
+	}
 	out.ServiceName = in.ServiceName
 	out.PodManagementPolicy = apps.PodManagementPolicyType(in.PodManagementPolicy)
 	return nil
@@ -140,8 +147,36 @@ func Convert_apps_StatefulSetSpec_To_v1beta1_StatefulSetSpec(in *apps.StatefulSe
 	} else {
 		out.VolumeClaimTemplates = nil
 	}
-	out.ServiceName = in.ServiceName
+	if in.RevisionHistoryLimit != nil {
+		out.RevisionHistoryLimit = new(int32)
+		*out.RevisionHistoryLimit = *in.RevisionHistoryLimit
+	}
 	out.PodManagementPolicy = PodManagementPolicyType(in.PodManagementPolicy)
+	if err := Convert_apps_StatefulSetUpdateStrategy_To_v1beta1_StatefulSetUpdateStrategy(&in.UpdateStrategy, &out.UpdateStrategy, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func Convert_v1beta1_StatefulSetUpdateStrategy_To_apps_StatefulSetUpdateStrategy(in *StatefulSetUpdateStrategy, out *apps.StatefulSetUpdateStrategy, s conversion.Scope) error {
+	out.Type = apps.StatefulSetUpdateStrategyType(in.Type)
+	if in.Partition != nil {
+		out.Partition = new(apps.PartitionStatefulSetStrategy)
+		out.Partition.Ordinal = in.Partition.Ordinal
+	} else {
+		out.Partition = nil
+	}
+	return nil
+}
+
+func Convert_apps_StatefulSetUpdateStrategy_To_v1beta1_StatefulSetUpdateStrategy(in *apps.StatefulSetUpdateStrategy, out *StatefulSetUpdateStrategy, s conversion.Scope) error {
+	out.Type = StatefulSetUpdateStrategyType(in.Type)
+	if in.Partition != nil {
+		out.Partition = new(PartitionStatefulSetStrategy)
+		out.Partition.Ordinal = in.Partition.Ordinal
+	} else {
+		out.Partition = nil
+	}
 	return nil
 }
 

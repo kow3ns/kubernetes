@@ -268,19 +268,15 @@ var _ = framework.KubeDescribe("StatefulSet", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			updateIndex := 0
-			By(fmt.Sprintf("Deleting stateful pod at index %d", updateIndex))
-			sst.DeleteStatefulPodAtIndex(updateIndex, ss)
+			sst.WaitForState(ss, func(set *apps.StatefulSet, pods *v1.PodList) (bool, error) {
+				for i := range pods.Items {
+					if pods.Items[i].Spec.Containers[0].Image != newImage {
+						return false, nil
+					}
+				}
+				return true, nil
+			})
 
-			By("Waiting for all stateful pods to be running again")
-			sst.WaitForRunningAndReady(*ss.Spec.Replicas, ss)
-
-			By(fmt.Sprintf("Verifying stateful pod at index %d is updated", updateIndex))
-			verify := func(pod *v1.Pod) {
-				podImage := pod.Spec.Containers[0].Image
-				Expect(podImage).To(Equal(newImage), fmt.Sprintf("Expected stateful pod image %s updated to %s", podImage, newImage))
-			}
-			sst.VerifyPodAtIndex(updateIndex, ss, verify)
 		})
 
 		It("Scaling down before scale up is finished should wait until current pod will be running and ready before it will be removed", func() {

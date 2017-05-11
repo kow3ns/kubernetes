@@ -45,6 +45,10 @@ func SetDefaults_StatefulSet(obj *StatefulSet) {
 		obj.Spec.Replicas = new(int32)
 		*obj.Spec.Replicas = 1
 	}
+	if obj.Spec.RevisionHistoryLimit == nil {
+		obj.Spec.RevisionHistoryLimit = new(int32)
+		*obj.Spec.RevisionHistoryLimit = 2
+	}
 }
 
 // SetDefaults_Deployment sets additional defaults compared to its counterpart

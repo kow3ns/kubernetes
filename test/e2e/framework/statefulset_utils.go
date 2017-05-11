@@ -312,6 +312,25 @@ func (s *StatefulSetTester) waitForRunning(numStatefulPods int32, ss *apps.State
 	}
 }
 
+// WaitForState periodically polls for the ss and its pods until the until function returns either true or an error
+func (s *StatefulSetTester) WaitForState(ss *apps.StatefulSet, until func(*apps.StatefulSet, *v1.PodList) (error, bool)) {
+	pollErr := wait.PollImmediate(StatefulSetPoll, StatefulSetTimeout,
+		func() (bool, error) {
+			ssGet, err := s.c.Apps().StatefulSets(ss.Namespace).Get(ss.Name, metav1.GetOptions{})
+			if err != nil {
+				return false, err
+			}
+			podList := s.GetPodList(ssGet)
+			done, err := until(ssGet, podList)
+			if done || err != nil {
+				return done, err
+			}
+		})
+	if pollErr != nil {
+		Failf("Failed waiting for pods to enter running: %v", pollErr)
+	}
+}
+
 // WaitForRunningAndReady waits for numStatefulPods in ss to be Running and Ready.
 func (s *StatefulSetTester) WaitForRunningAndReady(numStatefulPods int32, ss *apps.StatefulSet) {
 	s.waitForRunning(numStatefulPods, ss, true)

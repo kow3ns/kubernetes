@@ -26,6 +26,7 @@ import (
 const (
 	// StatefulSetInitAnnotation if present, and set to false, indicates that a Pod's readiness should be ignored.
 	StatefulSetInitAnnotation = "pod.alpha.kubernetes.io/initialized"
+	StatefulSetRevisionLabel  = "statefulset.beta.kubernetes.io/revision"
 )
 
 // ScaleSpec describes the attributes of a scale subresource
@@ -111,6 +112,50 @@ const (
 	ParallelPodManagement = "Parallel"
 )
 
+// StatefulSetUpdateStrategy indicates the strategy that the StatefulSet
+// controller will use to perform updates. It includes any additional parameters
+// necessary to preform the update for the indicated strategy.
+type StatefulSetUpdateStrategy struct {
+	// Type indicates the type of the StatefulSetUpdateStrategy.
+	Type StatefulSetUpdateStrategyType `json:"type,omitempty" protobuf:"bytes,1,opt,name=type,casttype=StatefulSetStrategyType"`
+	// Partition is used to communicate the ordinal at which to partition
+	// the StatefulSet when Type is PartitionStatefulSetStrategyType. This
+	// value must be set when Type is PartitionStatefulSetStrategyType,
+	// and it must be nil otherwise.
+	Partition *PartitionStatefulSetStrategy `json:"partition,omitempty" protobuf:"bytes,2,opt,name=partition"`
+}
+
+// StatefulSetUpdateStrategyType is a string enumeration type that enumerates
+// all possible update strategies for the StatefulSet controller.
+type StatefulSetUpdateStrategyType string
+
+const (
+	// PartitionStatefulSetStrategyType indicates that updates will only be
+	// applied to a partition of the StatefulSet. This is useful for canaries
+	// and phased roll outs. When a scale operation is performed with this
+	// strategy, new Pods will be created from the updated specification.
+	PartitionStatefulSetStrategyType StatefulSetUpdateStrategyType = "Partition"
+	// RollingUpdateStatefulSetStrategyType indicates that update will be
+	// applied to all Pods in the StatefulSet with respect to the StatefulSet
+	// ordering constraints. When a scale operation is performed with this
+	// strategy, new Pods will be created from the updated specification.
+	RollingUpdateStatefulSetStrategyType = "RollingUpdate"
+	// OnDeleteStatefulSetStrategyType triggers the legacy behavior. Version
+	// tracking and ordered rolling restarts are disabled. Pods are recreated
+	// from the StatefulSetSpec when they are manually deleted. When a scale
+	// operation is performed with this strategy, new Pods will be created
+	// from the current specification.
+	OnDeleteStatefulSetStrategyType = "OnDelete"
+)
+
+// PartitionStatefulSetStrategy contains the parameters used with the
+// PartitionStatefulSetStrategyType.
+type PartitionStatefulSetStrategy struct {
+	// Ordinal indicates the ordinal at which the StatefulSet should be
+	// partitioned.
+	Ordinal int32 `json:"ordinal" protobuf:"varint,1,opt,name=ordinal"`
+}
+
 // A StatefulSetSpec is the specification of a StatefulSet.
 type StatefulSetSpec struct {
 	// replicas is the desired number of replicas of the given Template.
@@ -160,6 +205,17 @@ type StatefulSetSpec struct {
 	// all pods at once.
 	// +optional
 	PodManagementPolicy PodManagementPolicyType `json:"podManagementPolicy,omitempty" protobuf:"bytes,6,opt,name=podManagementPolicy,casttype=PodManagementPolicyType"`
+
+	// updateStrategy indicates the StatefulSetUpdateStrategy that will be
+	// employed to update Pods in the StatefulSet when a revision is made to
+	// Template or VolumeClaimsTemplate.
+	UpdateStrategy StatefulSetUpdateStrategy `json:"updateStrategy,omitempty" protobuf:"bytes,7,opt,name=updateStrategy"`
+
+	// revisionHistoryLimit is the maximum number of revisions that will
+	// be maintained in the StatefulSet's revision history. The revision history
+	// consists of all revisions not represented by a currently applied
+	// StatefulSetSpec version. The default value is 2.
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty" protobuf:"varint,8,opt,name=revisionHistoryLimit"`
 }
 
 // StatefulSetStatus represents the current state of a StatefulSet.
@@ -170,6 +226,21 @@ type StatefulSetStatus struct {
 
 	// replicas is the number of actual replicas.
 	Replicas int32 `json:"replicas" protobuf:"varint,2,opt,name=replicas"`
+
+	// readyReplicas is the number of replicas with a Ready Condition.
+	ReadyReplicas int32 `json:"readyReplicas,omitempty" protobuf:"varint,3,opt,name=readyReplicas"`
+
+	// currentReplicas is the number of replicas at the CurrentRevision
+	CurrentReplicas int32 `json:"currentReplicas,omitempty" protobuf:"varint,4,opt,name=currentReplicas"`
+
+	// updatedReplicas is the number of replicas
+	UpdatedReplicas int32 `json:"updatedReplicas,omitempty" protobuf:"varint,5,opt,name=updatedReplicas"`
+
+	// currentRevision is the current revision of the StatefulSet
+	CurrentRevision string `json:"currentRevision,omitempty" protobuf:"bytes,6,opt,name=currentRevision"`
+
+	// updateRevision is the revision the StatefulSet is attempting to roll out
+	UpdateRevision string `json:"updateRevision,omitempty" protobuf:"bytes,7,opt,name=updateRevision"`
 }
 
 // StatefulSetList is a collection of StatefulSets.
