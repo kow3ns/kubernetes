@@ -43,6 +43,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/admission/podnodeselector"
 	"k8s.io/kubernetes/plugin/pkg/admission/podpreset"
 	"k8s.io/kubernetes/plugin/pkg/admission/podtolerationrestriction"
+	"k8s.io/kubernetes/plugin/pkg/admission/promotion"
 	"k8s.io/kubernetes/plugin/pkg/admission/resourcequota"
 	"k8s.io/kubernetes/plugin/pkg/admission/security/podsecuritypolicy"
 	"k8s.io/kubernetes/plugin/pkg/admission/securitycontext/scdeny"
@@ -77,4 +78,5 @@ func registerAllAdmissionPlugins(plugins *admission.Plugins) {
 	serviceaccount.Register(plugins)
 	setdefault.Register(plugins)
 	webhook.Register(plugins)
+	promotion.Register(plugins)
 }
